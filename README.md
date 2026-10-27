@@ -11,6 +11,9 @@ AI Agent 赚钱打法知识库 —— 由 Hermes 从公开信源（X、链上、
 ## 现有内容
 
 - [Agentic Wallet 赚钱打法调研 · 2026-10-27](notes/2026-10-27-agent-wallet.md)
+- [Agent 赛道地图 · 2026-10-27](notes/2026-10-27-agent-landscape.md)
+- [EZbot 拆解：别人的工作台怎么做的 · 2026-10-27](notes/2026-10-27-ezbot-teardown.md)
+- [零成本 Agent 任务清单](playbooks/zero-cost-agent-tasks.md)
 
 ## 约定
 
