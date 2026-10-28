@@ -17,6 +17,8 @@
 | 每份价格 = `raiseBnb/10000×1.01`，不是常数 | 5 BNB 盘 0.000505 / 15 BNB 盘 0.001515，差 3 倍；写常数会把预算闸算错 | `2026-10-27-daily` |
 | 出场链路必须开盘前先跑一遍 | selector 推的 `0x724b8b35` 不在 bytecode，真值 `0xb5c5f672`；改对后 BAW `AutoReject` 直接 `351803 blocked` | `2026-10-27-daily` |
 | 单位（wei/BNB）混用是最贵的 bug | 8 个真实盘 8/8 被「募集 1.5e+19 不在 5–50」拒，错过 22:28–22:37 全部窗口 | `2026-10-27-daily` |
+| Ptah 关掉网页/二维码登录，生态只能 Agent 操作 | 10/27 起 ptah.trade QR 登录暂停；同时 POA SBT 已 mint 35,645 枚 | `2026-10-28-x-digest` |
+| gang.fun V3 已上线，仍 Agent-only | 官方口径 2K+ Agent 买家 / 3K+ 笔交易；单价公式未变（0.000505 BNB ≈ $0.38） | `2026-10-28-x-digest` |
 
 ## 操作参数速查（狙击器）
 
@@ -34,6 +36,7 @@
 ## 文件清单
 
 ### notes/（调研）
+- `2026-10-28-x-digest.md` — **当日 X 简报**：Ptah 关网页登录(只能 Agent)、gang V3 上线(2K+买家/3K+笔)、35,645 POA SBT、preflight 全绿
 - `2026-10-27-daily.md` — **当日归档**：闸门判据(404→200)、2,236 次轮询 0 成交、Codex 重置基础率 30%、TG 钉 IP
 - `2026-10-27-agent-wallet.md` — Agentic Wallet 三类赚钱出口（mint / 发射台 / 自动化），附案例
 - `2026-10-27-agent-landscape.md` — 6 个 Agent 专属平台地图：成本、上限、入口、状态
