@@ -28,6 +28,7 @@
 | 出场链路必须开盘前先跑一遍 | selector 推的 `0x724b8b35` 不在 bytecode，真值 `0xb5c5f672`；改对后 BAW `AutoReject` 直接 `351803 blocked` | `2026-10-27-daily` |
 | 单位（wei/BNB）混用是最贵的 bug | 8 个真实盘 8/8 被「募集 1.5e+19 不在 5–50」拒，错过 22:28–22:37 全部窗口 | `2026-10-27-daily` |
 | Ptah 关掉网页/二维码登录，生态只能 Agent 操作 | 10/27 起 ptah.trade QR 登录暂停；同时 POA SBT 已 mint 35,645 枚 | `2026-10-28-x-digest` |
+| 手册 §23：3 秒时效标准（已收紧 5s/3s）/ 延迟实测 HL 20–30ms vs SafeTrade 0.4–0.8s / 返佣可把成本 0.23→0.13pp / 只信自己账本 | 5 条 | `playbooks/spot-perp-spread-execution.md` |
 | 手册 §22：笔数本身是成本（501 笔 −3.4U vs 6 笔 +3024U）→ 每日轮次上限已落代码 / 费率必须归一结算周期 / 指数要看充提状态 | 3 条 | `playbooks/spot-perp-spread-execution.md` |
 | 手册 §21：门槛按 P80 分位（实测 1.06% vs 挂的 3.00%）/ 成交价偏离告警已落代码 / io:PRL 参数实测 / 指数来源未确认 | 4 条 | `playbooks/spot-perp-spread-execution.md` |
 | 手册 §20：成本实测 0.23pp（现货 0.1%/边是大头）/ 记账用 avg_price / PRER 剪单 / 成交权 / 指数停充污染 | 5 条全部来自语料+交易所字段实测 | `playbooks/spot-perp-spread-execution.md` |
