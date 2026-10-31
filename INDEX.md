@@ -27,10 +27,8 @@
 | 每份价格 = `raiseBnb/10000×1.01`，不是常数 | 5 BNB 盘 0.000505 / 15 BNB 盘 0.001515，差 3 倍；写常数会把预算闸算错 | `2026-10-27-daily` |
 | 出场链路必须开盘前先跑一遍 | selector 推的 `0x724b8b35` 不在 bytecode，真值 `0xb5c5f672`；改对后 BAW `AutoReject` 直接 `351803 blocked` | `2026-10-27-daily` |
 | 单位（wei/BNB）混用是最贵的 bug | 8 个真实盘 8/8 被「募集 1.5e+19 不在 5–50」拒，错过 22:28–22:37 全部窗口 | `2026-10-27-daily` |
-| taoli 群聊 1000 条证据索引（CSV） | 1000 行=证据+动作；归并后 150 条结论；高 107/中 856/低 37 | `playbooks/taoli-1000.csv` + `notes/2026-10-31-taoli-1000-evidence-index` |
-| taoli 群聊蒸馏 150 条（12 类） | 43 已做 / 33 要做 / 67 知道 / 7 不适用；取代 55 条版 | `playbooks/taoli-traps-150` |
-| 群聊 55 条踩坑清单（A 建仓/B 单腿/C 价差/D 资金费/E 指数ADL/F 规则/G 记账） | 每条=规则+对我们 PEARL 期现的含义，标注 已做/要做/知道/不做 | `playbooks/taoli-traps-55` |
 | Ptah 关掉网页/二维码登录，生态只能 Agent 操作 | 10/27 起 ptah.trade QR 登录暂停；同时 POA SBT 已 mint 35,645 枚 | `2026-10-28-x-digest` |
+| 群聊 46.5 万条只留下**对这条线有用的 36 条**，写进期现手册 §10–§15 | 单腿静默形态/确认窗口/时效/ADL 真实规则/指数成分/记账四件套；另列 7 类明确不适用 | `playbooks/spot-perp-spread-execution` |
 | taoli 群 465,057 条全量读完：**没有可抄的参数，只有失败清单** | 2025-03→2026-10；9 条私库缺口，3 条直接改执行器 | `2026-10-31-taoli-groupchat-full-distillation` |
 | 单腿有**三种静默形态**，pnl 里可能一条记录都没有 | bundle 误判 / 黄色 `transaction replaced` / 合约被平现货还在但无 pnl | 同上 |
 | 爆仓价由**指数成分**决定，成分会被挑着打 | Gate LA：kucoin 进指数 → 40+ 人爆仓人均 3 万刀，拒赔；维权成本 6000U | 同上 |
