@@ -28,6 +28,7 @@
 | 出场链路必须开盘前先跑一遍 | selector 推的 `0x724b8b35` 不在 bytecode，真值 `0xb5c5f672`；改对后 BAW `AutoReject` 直接 `351803 blocked` | `2026-10-27-daily` |
 | 单位（wei/BNB）混用是最贵的 bug | 8 个真实盘 8/8 被「募集 1.5e+19 不在 5–50」拒，错过 22:28–22:37 全部窗口 | `2026-10-27-daily` |
 | Ptah 关掉网页/二维码登录，生态只能 Agent 操作 | 10/27 起 ptah.trade QR 登录暂停；同时 POA SBT 已 mint 35,645 枚 | `2026-10-28-x-digest` |
+| pearlusdt 实测（1.6h / 1000 笔）：真实价差中位 **1.23%**，3.0% 门槛 0% 时间满足 | 挂买一中位 7 秒成交、P90 22 秒；300 颗只占 1.6h 吃买一量的 0.7% | `2026-10-31-pearlusdt-microstructure` |
 | 错误台账 18 条（12 条已发生 + 6 条巡检新增）：每条都必须有防复发的代码或检查 | 取价≠下单市场 / 低于最小名义 / 撤单不回读 / pp 当钱 / state 入场价 / 粉尘 / 符号拼接 … | `playbooks/mistake-ledger` |
 | 2026-10-31 三道闸落地：确认窗口 3 次 / 报价时效 15s+5s / 以损定仓 $25 | 撤单回读+cancel 三次重试、粉尘 0.2 颗自动清；tests 12/12、drift 一致 | `playbooks/spot-perp-spread-execution` §17 |
 | 群聊 46.5 万条只留下**对这条线有用的 36 条**，写进期现手册 §10–§15 | 单腿静默形态/确认窗口/时效/ADL 真实规则/指数成分/记账四件套；另列 7 类明确不适用 | `playbooks/spot-perp-spread-execution` |
