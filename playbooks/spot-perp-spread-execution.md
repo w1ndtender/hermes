@@ -166,3 +166,17 @@ PEARL 分布（1,271 分钟点）：最低 −1.09 ｜ P1 +0.21 ｜ P5 +0.87 ｜
 
 CEX-CEX 期期（多所费率差）、借币吃负资费、多号返佣/KYC、下架币、股票永续/Pre-IPO、DEX-CEX 的 bundle 架构、Solana 正滑点分佣 —— 与 SafeTrade 现货 ↔ HL `io:PRL` 永续这条线无关，不再引入。
 
+## 17. 已落地的闸（2026-10-31 写入 exec.py，config 可调）
+
+```json
+"entry_confirm_n": 3,      // 连续 3 轮达门槛才挂单（≈15 秒确认窗口）
+"max_spot_age_s": 15,      // 现货报价超过 15 秒即作废（SafeTrade 走 CDP，天生慢）
+"max_perp_age_s": 5,       // 永续报价超过 5 秒即作废
+"max_loss_usd": 25,        // 两腿浮亏（含费用）触及 25 美元强制全平
+"dust_min_qty": 0.2        // 永续归零后现货余量 ≥0.2 颗即市价清掉
+```
+
+- 撤单：`cancel_wait_orders()` 撤完回读 `state=wait`，3 次重试仍留单 → 推送「撤单回读失败」并返回 0，**本轮不挂新单**。
+- 看门狗口径：`py_compile` → `tests_exec.py`（12/12）→ `drift_check.py`（门槛一致）→ 重启 → 日志必须出现「开仓价差/平仓价差」三行才算活。
+
+
