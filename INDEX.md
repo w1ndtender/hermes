@@ -138,3 +138,4 @@
 3. 改规则：同步更新 `eval-set.md`
 4. 所有预测：进 `prediction-log.md`
 - notes/2026-11-01-external-lessons-delta-neutral.md — 外部经验：做市复盘 unexplained gap / BIS carry / Leung-Li 最优进出场，及我们对应的代码改动
+- playbooks/spot-perp-spread-execution.md §29 — 口径三坑：可成交价公式（买一 vs 卖一差 0.7–1.3pp）、权益必须用 portfolio 端点、fundingHistory 不是逐小时实收
