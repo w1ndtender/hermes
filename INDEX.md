@@ -63,6 +63,8 @@
 | **taoli 库是「证据分层」库，不是策略库**：报价→可成交→成交→已实现净收益四层不可互换 | 作者自述收益（5.9%/200ms/30% 年化）一律标待核验，不得升级为参数 | `2026-10-30-taoli-repo-lessons` |
 | **gang Flywheel V2 上线（10/31 02:48Z）：开盘后仍按池价继续 mint、Mint Guard 15/20/30 默认关、新币走 V2** | 本机 config.json 与 `/api/fair/config` 都还是 **V1 pad 0x15CFD2…**；「preflight 全绿」只证明 V1 链路通，V2 换地址就会漏单 | `2026-10-31-x-digest` |
 | **PTAH 回升 $0.001919（24h +8.9%）、池 $1,682；P5 开奖 11,633 入场 / 6,027.47 PTAH 每槽 → 每帖 EV $0.50** | 估值价 $0.0021356（10/30 估值）；#35081 period 6 已登记（截止 10/31 12:44 CST），wins 仍 0/3 | `2026-10-31-x-digest` |
+| **gang 官宣 Launchpad 2.0（10/31 16:12Z）：curve fee 70% 归 creator、毕业档 6/9/12/15 BNB 自选**，但 `/api/fair/config` 仍是 `version=1` / `gradPick=false` / `creatorFeeShareBps=0` | 官方毕业率 **21/1,450 = 1.45%**（3,950 .ai 钱包、9.5 万笔、9M+ GANG 烧毁）；V2 换 pad 前「preflight 全绿」仍只覆盖 V1 | `2026-11-01-x-digest` |
+| **PTAH 两天腰斩：$0.0008587（24h −54.6%）、池只剩 $835**，POA 每帖 EV 按现价跌到 **≈$0.23** | 10/30 $0.001689 → 10/31 $0.001919 → 11/01 $0.000859；全链仅 1 个 PTAH 对 | `2026-11-01-x-digest` |
 | **V2 `getPair=0x0` ≠ 没有池子**：TOSH 一直在 PancakeSwap **Infinity** `TOSH/WBNB 0.2%` 池里 | hook `0x45F29984…6bC8`；开盘 `soldOutAt=10-29 12:27:54Z` 即建池，池内报价币 ≈**49.7 BNB ≈ $35,180**，现价 0.000000300 BNB = 2P 的 **42.2%**；DexScreener 对该合约 `pairs: null` | `2026-10-31-daily` / prediction-log #18（已证伪） |
 | **平台内记账 ≠ 链上交付**：TapeUP 页 89 页成交记录，链上 0 笔 UP 到买家 | 24,000 区块内 UP 仅 2 条 Transfer（铸造→引擎）；页面价 0.00935314 vs 链上 `price()` 0.01073208（差 **12.9%**）；页面 BEM 比引擎实持多 **3,049（≈$60k）**；引擎 163B 代理 + 单 EOA owner | `2026-10-31-daily` |
 | **结论不落进 config ＝ 没做**：3.0% 门槛已证 0% 时间满足，config 仍是 3.0% | `entry_threshold=3.0`、`taker=3.4`、`max_loss_usd=12`（固定）、`spot_maker_wait_s=45`；研究建议 1.0/1.4 + 名义 2pp + 25s 未落地 | `2026-10-31-daily` |
@@ -95,6 +97,7 @@
 - `2026-10-30-taoli-repo-lessons.md` — taoli 私有库蒸馏：证据四层分层、两腿残差属账户、资金费限幅与公式版本
 - `2026-10-30-x-digest.md` — **X 简报**：币安安全事件（DevOps 笔记本 / 充提停 / 冻结 $2.54B→$3B / BAW 掉线同期）、PTAH −47.9% 与 P4 开奖（12,288 入场、每槽 6,066、现价 EV $0.42）、gang 支持 MCP + bond mode、POA p5 已发帖
 - `2026-10-31-x-digest.md` — **X 简报**：gang Flywheel V2 上线（开盘后继续按池价 mint，V1 pad 未变→假绿风险）、gang Split、Ptah 二维码登录仍停/Phase 3 将至、PTAH $0.001919 与 P5 开奖（11,633 入场 / 6,027.47 每槽 / EV $0.50）、AKAKAY 的 TRX 价差搬砖
+- `2026-11-01-x-digest.md` — **X 简报**：gang Launchpad 2.0（70% fee 归 creator、毕业档 6/9/12/15）但接口仍 `version=1`、官方毕业率 21/1,450=1.45%、PTAH −54.6% 到 $0.000859（池 $835、每帖 EV≈$0.23）、Ptah IAO 测试中、AKAKAY 给出 IAO 空投 claim 参数（未执行）
 - `2026-10-29-daily.md` — **当日归档**：PRL 首笔实盘 −1.34U 根因（入场哨兵被绕过）、盘口宽闸门生效、BSC 模拟 6 笔 +5.27U、CROLL 速率证伪、exec.py 未赋值 bug
 - `2026-10-29-x-digest.md` — **X 简报**：POA 每日帖 EV $1.91→$0.47（入场 23,044 / 每槽 6,123 PTAH）、#35081 只进 period 3–4 且 wins 为空、gang 烧币>0.5% + CLI 回购销毁、QR 登录仍停
 - `2026-10-28-daily.md` — **当日归档**：三条硬教训（钱包数门槛 / 2% 价差≠2% 收益 / 同名 ticker）+ CROLL 尾盘状态
