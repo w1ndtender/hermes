@@ -427,16 +427,37 @@ CEX-CEX 期期（多所费率差）、借币吃负资费、多号返佣/KYC、�
 
 `hl_margin()` 改为返回 `avail = perp + (spot_usdc if unified else 0)`，闸门按 `avail` 判断；统一账户下永远够用。之前那版按 `perp` 判断、会在价差达标时**错误拒绝开仓**——一个自造的阻断器。
 
-### 26.4 教训
+### 26.4 官方文档原文（必须记住的三句）
+
+1. **「For API users, unified account and portfolio margin show all balances and holds in the spot clearinghouse state. Individual perp dex user states are not meaningful.」**
+   → 统一账户/组合保证金下，**余额只看 `spotClearinghouseState`**；逐个 perp dex 的 `accountValue`（我们看到的 0.0）本来就没有意义。这是"保证金=0"误判的官方依据。
+2. **「For unified account and portfolio margin, the user's cross margin positions in DEXs with the same collateral all share margin.」**
+   → USDC 是所有 USDC 抵押 DEX（含 HIP-3 的 io）的同一份保证金，**一个余额同时支援所有全仓仓位**，不需要按 DEX 划转。
+3. **「Unified account and portfolio margin are limited to 50k user actions per day.」**
+   → 统一账户每天有 **5 万次动作**上限（下单/撤单/划转等）。高频挂撤要算预算：按每轮建仓 3 次动作（挂/撤/改）+ 平仓 3 次 ≈ 6 次，一天 12 轮只有 72 次，完全够；但如果做秒级扫单会撞上限。
+
+### 26.5 清算与保证金的准确关系（文档）
+
+- 开仓保证金 = `position_size × mark_price / leverage`；PRL 最大 3x 且 strict isolated → 保证金 ≈ 名义的 **33%**
+- 维持保证金 = 最大杠杆下初始保证金的一半 → PRL 3x 时 ≈ 名义的 **16.7%**，即价格逆行约 **16.7%** 才到清算
+- **strict isolated：爆仓只看该仓位自己的保证金**，账户其他钱不参与；所以"账户有 392 但仓位保证金只有 265"是正常的，不是风险
+- 提取保证金/浮盈的条件：剩余保证金 ≥ `max(初始保证金, 10% × 总名义)`
+
+### 26.6 已落地的监控
+
+- `unified_ratio()`：按文档公式 `crossMaintenanceMarginUsed / (现货 USDC − 逐仓占用)`，`>0.5` 推 Telegram（5 分钟节流）
+- 实测当前：ratio 0.0、现货 392.02、逐仓占用 0
+
+### 26.7 教训
 
 **交易所"显示为 0"不等于"不能用"**。判断可用保证金必须同时看：`userAbstraction`、`spotClearinghouseState`、以及**一次真实的最小挂单探针**（远月限价，挂完立即撤，成本 0）。以后任何"余额/权限看起来不对"的判断，都用探针验证，不靠推理。
 
-### 26.5 资金结构仍需注意（不涉及划转）
+### 26.8 资金结构仍需注意（不涉及划转）
 
 - 现货腿在 SafeTrade（USDT）、永续腿在 HL（USDC 统一账户）→ 盈亏不能互调，永续侧被套只能外部补 USDC。
 - 满载 519 颗 2x 需 ≈ $371 保证金 vs 可用 $392 → **只剩 $21 缓冲，薄**。规模上到 500 颗前必须先补 USDC 或降到 ≤380 颗。
 
-### 26.6 顺带记下的三条
+### 26.9 顺带记下的三条
 
 1. **借币规则**（若以后做反套）：全仓杠杆借的币不能划到现货账户；利息「借出当即算一小时，之后整点再收」。
 2. **提币地址投毒**：充值后攻击者跟着转一笔小额同款，赌你从历史记录复制错地址 → 地址必须从官方页面复制 + 首次小额测试。
