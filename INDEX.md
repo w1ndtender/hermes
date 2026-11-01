@@ -137,3 +137,4 @@
 2. 新结论：写进 notes/ 或 playbooks/，并在本文件的表格里加一行
 3. 改规则：同步更新 `eval-set.md`
 4. 所有预测：进 `prediction-log.md`
+- notes/2026-11-01-external-lessons-delta-neutral.md — 外部经验：做市复盘 unexplained gap / BIS carry / Leung-Li 最优进出场，及我们对应的代码改动
