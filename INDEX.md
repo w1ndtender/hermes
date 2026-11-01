@@ -29,6 +29,7 @@
 | 单位（wei/BNB）混用是最贵的 bug | 8 个真实盘 8/8 被「募集 1.5e+19 不在 5–50」拒，错过 22:28–22:37 全部窗口 | `2026-10-27-daily` |
 | Ptah 关掉网页/二维码登录，生态只能 Agent 操作 | 10/27 起 ptah.trade QR 登录暂停；同时 POA SBT 已 mint 35,645 枚 | `2026-10-28-x-digest` |
 | 语料作者级复核：真人长消息里唯一新内容＝群主的 LP+双向限价对冲，但 PRL 无 CLMM 池不适用 | 顺带查实「PEARL $4,000 万池」是 10-20 后新部署的同名假池（价 2.42 vs 我们 1.47、24h 量 $53） | `notes/2026-11-01-corpus-saturation-author-pass` |
+| 手册 §25：HL 标记价公式（mark≠mid≠oracle，已加 mark_dev 0.5% 闸）/ 单腿概率可到 50% / 失败后状态不复位会卡死 / 多档止损 / 双边成本 0.3 | 111 条中短消息全读完 | `playbooks/spot-perp-spread-execution.md` |
 | 手册 §24：语料已饱和（46.5 万条 → 148 条精确候选 → 5 条新 → 1 条可用）| 继续挖边际收益≈0；瓶颈在门槛与单笔大小，不在语料 | `playbooks/spot-perp-spread-execution.md` |
 | 手册 §23：3 秒时效标准（已收紧 5s/3s）/ 延迟实测 HL 20–30ms vs SafeTrade 0.4–0.8s / 返佣可把成本 0.23→0.13pp / 只信自己账本 | 5 条 | `playbooks/spot-perp-spread-execution.md` |
 | 手册 §22：笔数本身是成本（501 笔 −3.4U vs 6 笔 +3024U）→ 每日轮次上限已落代码 / 费率必须归一结算周期 / 指数要看充提状态 | 3 条 | `playbooks/spot-perp-spread-execution.md` |
