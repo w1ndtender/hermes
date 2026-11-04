@@ -38,3 +38,7 @@
 
 ## 第五轮补充
 - GitHub Gabriel-0110/.hermes :: docs/architecture/hermes-trader-architecture.md（多 agent 交易平台架构）
+
+## 第六轮补充
+- notwitcheer/hermes-recipes（Hermes Wingtips 113 条实测技巧）
+- 官方 user-stories 全量 112 条案例
