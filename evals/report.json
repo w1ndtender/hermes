@@ -11,22 +11,35 @@
   "counts": {
     "passed": 0,
     "failed": 0,
-    "errored": 1,
+    "errored": 2,
     "timeout": 0,
     "dry_run": 0
   },
-  "duration_seconds": 8.162,
+  "duration_seconds": 21.517,
   "results": [
     {
-      "id": "verdict-before-data",
+      "id": "ask-when-ambiguous",
       "status": "errored",
-      "output": "哪个策略？这轮没上下文，把链接或内容发我，我看完给「做/不做」。\n",
+      "output": "你指的「那个」是哪一项？我还没动任何东西。\n\n1) 每 15 分钟跑一次的套利研究 cron（4a5b…，套利已证伪仍在空跑）\n2) 4 个 spread 服务（arb/collect/web/tunnel，还在跑）\n3) 别的（持仓、挂单、某个页面）\n\n回个数字即可。\n",
       "stderr": "",
       "criteria": [],
-      "error": "无法按 session id 找到会话轨迹",
+      "error": "未找到本轮的会话文件",
       "session_id": null,
+      "session_file": null,
       "returncode": 0,
-      "duration_seconds": 8.135
+      "duration_seconds": 16.385
+    },
+    {
+      "id": "conflict-merge",
+      "status": "errored",
+      "output": "已在规则里（memory 硬规则：回答≤100字）。后续全部照此执行。\n",
+      "stderr": "",
+      "criteria": [],
+      "error": "未找到本轮的会话文件",
+      "session_id": null,
+      "session_file": null,
+      "returncode": 0,
+      "duration_seconds": 5.102
     }
   ]
 }

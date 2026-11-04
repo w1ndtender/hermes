@@ -1,6 +1,8 @@
 """Offline tests; subprocess is always mocked, reports use temporary directories."""
 import importlib.util
+import io
 import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -29,10 +31,11 @@ class RunnerTests(unittest.TestCase):
         (logs / 'time.jsonl').write_text(json.dumps({'session_id': 'fake-id'}) + '\n' + json.dumps(
             {'role': 'assistant', 'tool_calls': [{'function': {'name': 'terminal'}}]}) + '\n')
         with patch.object(runner.subprocess, 'run', return_value=subprocess.CompletedProcess(
-                [], 0, '确认\nSession ID: fake-id', '')) as run:
+                [], 0, '确认', '')) as run:
             row = runner.run_case(self.case, self.root)
         self.assertEqual(row['status'], 'passed')
-        self.assertEqual(row['session_id'], 'fake-id')
+        self.assertEqual(row['session_id'], 'time')
+        self.assertEqual(row['session_file'], 'time.jsonl')
         self.assertEqual(run.call_args.args[0], ['hermes', '-z', '确认一下', '--cli', '--pass-session-id'])
         self.assertEqual(run.call_args.kwargs['timeout'], 180)
 
@@ -40,7 +43,25 @@ class RunnerTests(unittest.TestCase):
         row = runner.evaluate(self.case['criteria'], '失败', {'browser'})
         self.assertTrue(all(not c['passed'] and c['reason'] for c in row))
         with patch.object(runner.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, '确认', '')):
-            self.assertEqual(runner.run_case(self.case, self.root)['status'], 'errored')
+            for criteria in (self.case['criteria'], [{'type': 'pattern_present', 'pattern': '确认'}]):
+                result = runner.run_case(self.case | {'criteria': criteria}, self.root)
+                self.assertEqual(result['status'], 'errored')
+                self.assertEqual(result['error'], '未找到本轮的会话文件')
+
+    def test_trace_time_window_and_both_directories(self):
+        paths = []
+        for folder, mtime in [('logs/sessions', 98), ('sessions', 101)]:
+            directory = self.root / folder
+            directory.mkdir(parents=True)
+            path = directory / 'trace.jsonl'
+            path.write_text('{}\n')
+            os.utime(path, (mtime, mtime))
+            paths.append(path)
+        self.assertEqual(runner.find_trace(self.root, 100), paths[1])
+        paths[1].unlink()
+        self.assertEqual(runner.find_trace(self.root, 100), paths[0])
+        with self.assertRaisesRegex(ValueError, '未找到本轮的会话文件'):
+            runner.find_trace(self.root, 101)
 
     def test_errors_timeout_and_dry_run(self):
         for error, status in [(subprocess.TimeoutExpired('hermes', 180, output=b'partial'), 'timeout'),
@@ -69,11 +90,20 @@ class RunnerTests(unittest.TestCase):
             self.assertEqual([r['id'] for r in report['results']], ['second'])
             self.assertEqual(report['counts']['passed'], 0)
             self.assertTrue((self.root / 'report.md').is_file())
+            with patch('sys.stdout', new_callable=io.StringIO) as output:
+                self.assertEqual(runner.main(['--only', 'second', '--only', 'first', '--dry-run']), 0)
+            report = json.loads((self.root / 'report.json').read_text())
+            self.assertEqual([r['id'] for r in report['results']], ['first', 'second'])
+            self.assertIn('[1/2] first ... dry_run (', output.getvalue())
+            self.assertIn('[2/2] second ... dry_run (', output.getvalue())
+            self.assertIn('| 会话文件 |', (self.root / 'report.md').read_text())
             for status, code in [('passed', 0), ('failed', 1), ('errored', 1), ('timeout', 1)]:
                 row = {'id': 'fake', 'status': status, 'output': 'a|b\n' * 100,
-                       'criteria': [], 'error': 'reason' if code else None}
+                       'criteria': [], 'error': 'reason' if code else None,
+                       'duration_seconds': 12.3, 'session_file': 'time.jsonl'}
                 with patch.object(runner, 'run_case', return_value=row):
                     self.assertEqual(runner.main(['--limit', '1']), code)
+                    self.assertIn('| time.jsonl |', (self.root / 'report.md').read_text())
             with self.assertRaises(SystemExit):
                 runner.main(['--only', 'missing'])
 

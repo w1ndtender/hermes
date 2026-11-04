@@ -73,22 +73,17 @@ def tools_from_trace(path):
     return names
 
 
-def find_trace(home, output):
-    clean = re.sub(r'\x1b\[[0-9;]*m', '', output)
-    ids = re.findall(r'(?:session[_ ]id|session)\s*[:=]\s*[\"\']?([\w-]+)', clean, re.I)
-    # Hermes session identifiers also appear without a label in CLI output.
-    ids += re.findall(r'\b\d{8}_\d{6}_[\w-]+\b', clean)
-    directory = home / 'logs' / 'sessions'
-    for sid in dict.fromkeys(ids):
-        direct = directory / f'{sid}.jsonl'
-        if direct.is_file():
-            return sid, direct
+def find_trace(home, t0):
+    candidates = []
+    for directory in (home / 'logs' / 'sessions', home / 'sessions'):
         for path in directory.glob('*.jsonl'):
-            rows = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
-            if any(isinstance(row, dict) and (row.get('session_id') == sid or
-                   row.get('metadata', {}).get('session_id') == sid) for row in rows):
-                return sid, path
-    raise ValueError('无法按 session id 找到会话轨迹')
+            if path.is_file():
+                mtime = path.stat().st_mtime
+                if mtime >= t0 - 2:
+                    candidates.append((mtime, path))
+    if not candidates:
+        raise ValueError('未找到本轮的会话文件')
+    return max(candidates, key=lambda item: item[0])[1]
 
 
 def evaluate(criteria, output, tools):
@@ -103,9 +98,10 @@ def evaluate(criteria, output, tools):
 
 
 def run_case(case, home, dry_run=False):
+    t0 = time.time()
     start = time.monotonic()
     row = {'id': case['id'], 'status': 'errored', 'output': '', 'stderr': '',
-           'criteria': [], 'error': None, 'session_id': None}
+           'criteria': [], 'error': None, 'session_id': None, 'session_file': None}
     try:
         validate(case['criteria'])
         if dry_run:
@@ -117,11 +113,10 @@ def run_case(case, home, dry_run=False):
             row.update(output=proc.stdout, stderr=proc.stderr, returncode=proc.returncode)
             if proc.returncode:
                 raise ValueError(f'hermes 退出码 {proc.returncode}: {proc.stderr}')
-            tools = set()
-            if any(c['type'].startswith('tool_') for c in case['criteria']):
-                sid, path = find_trace(home, proc.stdout + '\n' + proc.stderr)
-                row['session_id'] = sid
-                tools = tools_from_trace(path)
+            path = find_trace(home, t0)
+            row['session_file'] = path.name
+            row['session_id'] = path.stem
+            tools = tools_from_trace(path)
             row['criteria'] = evaluate(case['criteria'], proc.stdout, tools)
             row['status'] = 'passed' if all(c['passed'] for c in row['criteria']) else 'failed'
     except subprocess.TimeoutExpired as exc:
@@ -143,10 +138,10 @@ def write_reports(report, directory):
         return str(value).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('|', '&#124;').replace('\r', '').replace('\n', '<br>')
     lines = ['# Eval report', '', f"配置指纹：{json.dumps(report['fingerprint'], ensure_ascii=False)}", '',
              f"汇总：{report['counts']}；总耗时 {report['duration_seconds']} 秒；dry-run={report['dry_run']}", '',
-             '| 用例 id | 结果 | 失败判据 / 错误 | 输出前 120 字 |', '| --- | --- | --- | --- |']
+             '| 用例 id | 结果 | 会话文件 | 失败判据 / 错误 | 输出前 120 字 |', '| --- | --- | --- | --- | --- |']
     for row in report['results']:
         reasons = [c['reason'] for c in row['criteria'] if c['passed'] is False]
-        lines.append('| ' + ' | '.join(map(cell, [row['id'], row['status'], row['error'] or '; '.join(reasons), row['output'][:120]])) + ' |')
+        lines.append('| ' + ' | '.join(map(cell, [row['id'], row['status'], row.get('session_file') or '-', row['error'] or '; '.join(reasons), row['output'][:120]])) + ' |')
     lines += ['', '## 判据明细', '']
     for row in report['results']:
         lines.append(f"- {cell(row['id'])}: {cell(row['error'] or '')}")
@@ -157,7 +152,7 @@ def write_reports(report, directory):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--only')
+    parser.add_argument('--only', action='append')
     parser.add_argument('--limit', type=int)
     parser.add_argument('--dry-run', action='store_true')
     args = parser.parse_args(argv)
@@ -169,9 +164,10 @@ def main(argv=None):
     print('配置指纹：' + json.dumps(fp, ensure_ascii=False), flush=True)
     cases = [json.loads(line) for line in (ROOT / 'cases.jsonl').read_text().splitlines() if line.strip()]
     if args.only:
-        cases = [c for c in cases if c['id'] == args.only]
-        if not cases:
-            parser.error(f'不存在的用例 id: {args.only}')
+        missing = set(args.only) - {c['id'] for c in cases}
+        if missing:
+            parser.error(f'不存在的用例 id: {sorted(missing)}')
+        cases = [c for c in cases if c['id'] in args.only]
     if args.limit:
         cases = cases[:args.limit]
     chars = sum(len(c['input']) for c in cases)
@@ -179,10 +175,12 @@ def main(argv=None):
           f'粗按 1 字/token、$1/百万输入 token 约 ${chars / 1_000_000:.6f}。'
           '仅示例单价，不含系统提示、memory、输出及工具多轮，实际费用取决于模型。', flush=True)
     results = []
-    for case in cases:
+    for index, case in enumerate(cases, 1):
         row = run_case(case, home, args.dry_run)
         results.append(row)
-        print(f"{row['id']}: {row['status']} {row['error'] or ''}", flush=True)
+        print(f"[{index}/{len(cases)}] {row['id']} ... {row['status']} ({row['duration_seconds']:.1f}s)", flush=True)
+        if row['error']:
+            print(f"  {row['error']}", flush=True)
         for detail in row['criteria']:
             print(f"  {detail['criterion']}: {detail['passed']} {detail['reason']}")
     counts = {status: sum(r['status'] == status for r in results)
