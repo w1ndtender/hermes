@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sqlite3
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -25,17 +26,35 @@ class RunnerTests(unittest.TestCase):
             {'type': 'tool_called', 'tool': 'terminal'},
             {'type': 'tool_not_called', 'tool': 'browser'}]}
 
+    def make_db(self):
+        connection = sqlite3.connect(self.root / 'state.db')
+        self.addCleanup(connection.close)
+        connection.executescript("""
+            CREATE TABLE sessions (id TEXT PRIMARY KEY, started_at REAL, estimated_cost_usd REAL);
+            CREATE TABLE messages (id INTEGER PRIMARY KEY, session_id TEXT, role TEXT,
+                                   tool_calls TEXT, tool_name TEXT, timestamp REAL);
+        """)
+        return connection
+
     def test_all_criteria_and_session_lookup(self):
-        logs = self.root / 'logs/sessions'
-        logs.mkdir(parents=True)
-        (logs / 'time.jsonl').write_text(json.dumps({'session_id': 'fake-id'}) + '\n' + json.dumps(
-            {'role': 'assistant', 'tool_calls': [{'function': {'name': 'terminal'}}]}) + '\n')
-        with patch.object(runner.subprocess, 'run', return_value=subprocess.CompletedProcess(
-                [], 0, '确认', '')) as run:
+        db = self.make_db()
+        db.execute('INSERT INTO sessions VALUES (?, ?, ?)', ('fake-id', 100, 0.125))
+        db.executemany('INSERT INTO messages VALUES (?, ?, ?, ?, ?, ?)', [
+            (1, 'fake-id', 'assistant', json.dumps([
+                {'function': {'name': 'terminal'}}, {'name': 'search'}]), None, 100),
+            (2, 'fake-id', 'tool', None, 'terminal', 101),
+            (3, 'fake-id', 'tool', None, 'read_file', 102),
+            (4, 'other', 'tool', None, 'browser', 103)])
+        db.commit()
+        before = (self.root / 'state.db').read_bytes()
+        with patch.object(runner.time, 'time', return_value=100), patch.object(
+                runner.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, '确认', '')) as run:
             row = runner.run_case(self.case, self.root)
         self.assertEqual(row['status'], 'passed')
-        self.assertEqual(row['session_id'], 'time')
-        self.assertEqual(row['session_file'], 'time.jsonl')
+        self.assertEqual(row['session_id'], 'fake-id')
+        self.assertEqual(row['tool_names'], ['terminal', 'search', 'read_file'])
+        self.assertEqual(row['estimated_cost_usd'], 0.125)
+        self.assertEqual((self.root / 'state.db').read_bytes(), before)
         self.assertEqual(run.call_args.args[0], ['hermes', '-z', '确认一下', '--cli', '--pass-session-id'])
         self.assertEqual(run.call_args.kwargs['timeout'], 180)
 
@@ -46,22 +65,24 @@ class RunnerTests(unittest.TestCase):
             for criteria in (self.case['criteria'], [{'type': 'pattern_present', 'pattern': '确认'}]):
                 result = runner.run_case(self.case | {'criteria': criteria}, self.root)
                 self.assertEqual(result['status'], 'errored')
-                self.assertEqual(result['error'], '未找到本轮的会话文件')
+                self.assertEqual(result['error'], 'state.db 里没有本轮会话')
+        self.assertFalse((self.root / 'state.db').exists())
 
-    def test_trace_time_window_and_both_directories(self):
-        paths = []
-        for folder, mtime in [('logs/sessions', 98), ('sessions', 101)]:
-            directory = self.root / folder
-            directory.mkdir(parents=True)
-            path = directory / 'trace.jsonl'
-            path.write_text('{}\n')
-            os.utime(path, (mtime, mtime))
-            paths.append(path)
-        self.assertEqual(runner.find_trace(self.root, 100), paths[1])
-        paths[1].unlink()
-        self.assertEqual(runner.find_trace(self.root, 100), paths[0])
-        with self.assertRaisesRegex(ValueError, '未找到本轮的会话文件'):
-            runner.find_trace(self.root, 101)
+    def test_trace_time_window_and_read_only(self):
+        db = self.make_db()
+        db.executemany('INSERT INTO sessions VALUES (?, ?, ?)', [
+            ('old', 99.9, 1), ('boundary', 100, None), ('latest', 101, 0.2)])
+        db.commit()
+        connect = sqlite3.connect
+        with patch.object(runner.sqlite3, 'connect', wraps=connect) as opened:
+            self.assertEqual(runner.read_session(self.root, 100), ('latest', [], 0.2))
+        self.assertTrue(opened.call_args.args[0].endswith('state.db?mode=ro'))
+        self.assertTrue(opened.call_args.kwargs['uri'])
+        db.execute("DELETE FROM sessions WHERE id = 'latest'")
+        db.commit()
+        self.assertEqual(runner.read_session(self.root, 100), ('boundary', [], None))
+        with self.assertRaisesRegex(ValueError, 'state.db 里没有本轮会话'):
+            runner.read_session(self.root, 100.1)
 
     def test_errors_timeout_and_dry_run(self):
         for error, status in [(subprocess.TimeoutExpired('hermes', 180, output=b'partial'), 'timeout'),
@@ -96,14 +117,19 @@ class RunnerTests(unittest.TestCase):
             self.assertEqual([r['id'] for r in report['results']], ['first', 'second'])
             self.assertIn('[1/2] first ... dry_run (', output.getvalue())
             self.assertIn('[2/2] second ... dry_run (', output.getvalue())
-            self.assertIn('| 会话文件 |', (self.root / 'report.md').read_text())
+            self.assertIn('| 会话 id | 工具调用 | 估算成本（USD） |', (self.root / 'report.md').read_text())
             for status, code in [('passed', 0), ('failed', 1), ('errored', 1), ('timeout', 1)]:
                 row = {'id': 'fake', 'status': status, 'output': 'a|b\n' * 100,
                        'criteria': [], 'error': 'reason' if code else None,
-                       'duration_seconds': 12.3, 'session_file': 'time.jsonl'}
+                       'duration_seconds': 12.3, 'session_id': 'fake-id',
+                       'tool_names': ['terminal', 'a', 'b', 'c', 'd', 'e', 'hidden'],
+                       'estimated_cost_usd': 0.125}
                 with patch.object(runner, 'run_case', return_value=row):
                     self.assertEqual(runner.main(['--limit', '1']), code)
-                    self.assertIn('| time.jsonl |', (self.root / 'report.md').read_text())
+                    markdown = (self.root / 'report.md').read_text()
+                    self.assertIn('| fake-id | terminal, a, b, c, d, e | 0.125 |', markdown)
+                    self.assertNotIn('hidden', markdown)
+                    self.assertIn('本轮总成本（估算）：$0.125000', markdown)
             with self.assertRaises(SystemExit):
                 runner.main(['--only', 'missing'])
 

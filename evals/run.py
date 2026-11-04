@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sqlite3
 import time
 
 ROOT = Path(__file__).resolve().parent
@@ -48,42 +49,37 @@ def validate(criteria):
             re.compile(c[key])
 
 
-def tools_from_trace(path):
-    names = set()
-    def visit(obj):
-        if isinstance(obj, list):
-            for item in obj:
-                visit(item)
-        elif isinstance(obj, dict):
-            for call in obj.get('tool_calls', []) or []:
-                name = call.get('function', {}).get('name') or call.get('name')
-                if name:
-                    names.add(name)
-            if obj.get('type') in ('tool_call', 'function_call'):
-                name = obj.get('name') or obj.get('tool') or obj.get('function', {}).get('name')
-                if name:
-                    names.add(name)
-            for key, value in obj.items():
-                if key not in ('arguments', 'content', 'tool_calls'):
-                    visit(value)
-    rows = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
-    if not rows:
-        raise ValueError('会话轨迹为空')
-    visit(rows)
-    return names
+def read_session(home, t0):
+    uri = (home / 'state.db').resolve().as_uri() + '?mode=ro'
+    try:
+        connection = sqlite3.connect(uri, uri=True)
+    except sqlite3.OperationalError:
+        if not (home / 'state.db').exists():
+            raise ValueError('state.db 里没有本轮会话') from None
+        raise
+    try:
+        session = connection.execute(
+            'SELECT id, estimated_cost_usd FROM sessions '
+            'WHERE started_at >= ? ORDER BY started_at DESC LIMIT 1', (t0,)
+        ).fetchone()
+        if session is None:
+            raise ValueError('state.db 里没有本轮会话')
+        names = []
 
+        def add(name):
+            if isinstance(name, str) and name and name not in names:
+                names.append(name)
 
-def find_trace(home, t0):
-    candidates = []
-    for directory in (home / 'logs' / 'sessions', home / 'sessions'):
-        for path in directory.glob('*.jsonl'):
-            if path.is_file():
-                mtime = path.stat().st_mtime
-                if mtime >= t0 - 2:
-                    candidates.append((mtime, path))
-    if not candidates:
-        raise ValueError('未找到本轮的会话文件')
-    return max(candidates, key=lambda item: item[0])[1]
+        for role, calls, name in connection.execute(
+                'SELECT role, tool_calls, tool_name FROM messages '
+                'WHERE session_id = ? ORDER BY timestamp, id', (session[0],)):
+            if role == 'assistant' and calls:
+                for call in json.loads(calls):
+                    add(call.get('function', {}).get('name') or call.get('name'))
+            add(name)
+        return session[0], names, session[1]
+    finally:
+        connection.close()
 
 
 def evaluate(criteria, output, tools):
@@ -101,7 +97,8 @@ def run_case(case, home, dry_run=False):
     t0 = time.time()
     start = time.monotonic()
     row = {'id': case['id'], 'status': 'errored', 'output': '', 'stderr': '',
-           'criteria': [], 'error': None, 'session_id': None, 'session_file': None}
+           'criteria': [], 'error': None, 'session_id': None,
+           'tool_names': [], 'estimated_cost_usd': None}
     try:
         validate(case['criteria'])
         if dry_run:
@@ -113,10 +110,8 @@ def run_case(case, home, dry_run=False):
             row.update(output=proc.stdout, stderr=proc.stderr, returncode=proc.returncode)
             if proc.returncode:
                 raise ValueError(f'hermes 退出码 {proc.returncode}: {proc.stderr}')
-            path = find_trace(home, t0)
-            row['session_file'] = path.name
-            row['session_id'] = path.stem
-            tools = tools_from_trace(path)
+            session_id, tools, cost = read_session(home, t0)
+            row.update(session_id=session_id, tool_names=tools, estimated_cost_usd=cost)
             row['criteria'] = evaluate(case['criteria'], proc.stdout, tools)
             row['status'] = 'passed' if all(c['passed'] for c in row['criteria']) else 'failed'
     except subprocess.TimeoutExpired as exc:
@@ -125,7 +120,7 @@ def run_case(case, home, dry_run=False):
         for key in ('stdout', 'stderr'):
             value = getattr(exc, key) or ''
             row['output' if key == 'stdout' else key] = value.decode(errors='replace') if isinstance(value, bytes) else value
-    except (OSError, ValueError, TypeError, KeyError, re.error) as exc:
+    except (OSError, ValueError, TypeError, KeyError, re.error, sqlite3.Error) as exc:
         row['error'] = str(exc)
     row['duration_seconds'] = round(time.monotonic() - start, 3)
     return row
@@ -138,15 +133,18 @@ def write_reports(report, directory):
         return str(value).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('|', '&#124;').replace('\r', '').replace('\n', '<br>')
     lines = ['# Eval report', '', f"配置指纹：{json.dumps(report['fingerprint'], ensure_ascii=False)}", '',
              f"汇总：{report['counts']}；总耗时 {report['duration_seconds']} 秒；dry-run={report['dry_run']}", '',
-             '| 用例 id | 结果 | 会话文件 | 失败判据 / 错误 | 输出前 120 字 |', '| --- | --- | --- | --- | --- |']
+             '| 用例 id | 结果 | 会话 id | 工具调用 | 估算成本（USD） | 失败判据 / 错误 | 输出前 120 字 |', '| --- | --- | --- | --- | --- | --- | --- |']
     for row in report['results']:
         reasons = [c['reason'] for c in row['criteria'] if c['passed'] is False]
-        lines.append('| ' + ' | '.join(map(cell, [row['id'], row['status'], row.get('session_file') or '-', row['error'] or '; '.join(reasons), row['output'][:120]])) + ' |')
+        lines.append('| ' + ' | '.join(map(cell, [row['id'], row['status'], row.get('session_id') or '-', ', '.join(row.get('tool_names', [])[:6]) or '-',
+            row.get('estimated_cost_usd') if row.get('estimated_cost_usd') is not None else '-', row['error'] or '; '.join(reasons), row['output'][:120]])) + ' |')
     lines += ['', '## 判据明细', '']
     for row in report['results']:
         lines.append(f"- {cell(row['id'])}: {cell(row['error'] or '')}")
         for detail in row['criteria']:
             lines.append(f"  - {cell(json.dumps(detail['criterion'], ensure_ascii=False))}: {detail['passed']} {cell(detail['reason'])}")
+    total_cost = sum(row.get('estimated_cost_usd') or 0 for row in report['results'])
+    lines += ['', f'本轮总成本（估算）：${total_cost:.6f}']
     (directory / 'report.md').write_text('\n'.join(lines) + '\n')
 
 
@@ -179,6 +177,7 @@ def main(argv=None):
         row = run_case(case, home, args.dry_run)
         results.append(row)
         print(f"[{index}/{len(cases)}] {row['id']} ... {row['status']} ({row['duration_seconds']:.1f}s)", flush=True)
+        print(f"  会话 id：{row.get('session_id') or '-'}；工具调用：{', '.join(row.get('tool_names', [])[:6]) or '-'}", flush=True)
         if row['error']:
             print(f"  {row['error']}", flush=True)
         for detail in row['criteria']:
@@ -187,7 +186,9 @@ def main(argv=None):
               for status in ('passed', 'failed', 'errored', 'timeout', 'dry_run')}
     report = {'fingerprint': fp, 'dry_run': args.dry_run, 'counts': counts,
               'duration_seconds': round(time.monotonic() - start, 3), 'results': results}
+    report['estimated_cost_usd'] = sum(row.get('estimated_cost_usd') or 0 for row in results)
     write_reports(report, ROOT)
+    print(f"本轮总成本（估算）：${report['estimated_cost_usd']:.6f}")
     print(f'汇总：{counts}；总耗时 {report["duration_seconds"]} 秒')
     return int(any(counts[s] for s in ('failed', 'errored', 'timeout')))
 
