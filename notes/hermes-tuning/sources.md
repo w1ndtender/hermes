@@ -32,3 +32,6 @@
 - 官方 guides/cron-script-only（no-agent 模式）
 - 官方 user-guide/configuration（目录结构、config 命令）
 - 官方 bundled skill productivity/product-price-monitor（监控契约三条硬规矩）
+
+## 第四轮补充
+- 官方 docs/user-stories（社区真实案例汇总，含 Trading & Markets 分类）
