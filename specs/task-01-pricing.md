@@ -42,7 +42,9 @@ class Book:
 def entry_edge_pct(b: Book) -> float:      # 开仓：（永续买一 − 现货卖一）/ 现货卖一 × 100
 def exit_edge_pct(b: Book) -> float:       # 平仓：（永续卖一 − 现货买一）/ 现货买一 × 100
 def net_after_cost(b: Book, cost_pct: float, side: str) -> float   # side ∈ {"entry","exit"}
-def fillable_qty(b: Book, max_notional: float, slippage_bps: float = 10) -> float
+def fillable_qty(b: Book, max_notional: float, step: float = 0.0, min_notional: float = 10.0, slippage_bps: float = 10) -> float
+    # step = 该交易对的最小数量单位（由调用方从场所 meta 取，见下）
+    # min_notional = 场所最小名义金额
 def validate(b: Book, max_age_ms: int = 3000) -> None   # 不合法直接抛异常
 ```
 
@@ -133,9 +135,21 @@ cd ~/spread && .venv/bin/python tools/compare_edge.py --fix 1.45 --perp-bid 1.46
 
 ---
 
-## 给 Codex 的讨论点（需要它回答，不是沉默实现）
+## 给 Codex 的讨论点（需在 PR 描述里逐条回答，不许沉默实现）
 
-1. `fillable_qty` 的滑点模型：固定 10bps 还是按深度比例？给个理由。
-2. `Book` 是否该带 `source` 字段（哪个 API、哪个接口）？我倾向要，因为出问题要能追。
-3. 3000ms 的时效阈值是否应该按场所区分（HL 快、SafeTrade 慢）？
-4. 同名不同币的 3 倍阈值，是否该改成「按历史价差分布判断」而不是固定倍数？
+**问 1：`fillable_qty` 的滑点模型？**
+已查官方规则，约束来自场所而非模型，按下面事实实现：
+- Hyperliquid 永续：最小名义 **$10**（`Order must have minimum value of $10.`）；数量小数位由 `meta` 里每资产的 `szDecimals` 决定；价格最多 5 位有效数字、且小数位 ≤ `6 - szDecimals`（现货为 `8 - szDecimals`）。
+- 所以 `step` 由调用方传入（`10^-szDecimals`），本函数不猜。
+- 滑点：默认 `slippage_bps=10`，即按「卖一价 × (1 − 10bps)」折价后计算名义；不需要深度曲线，因为 `Book` 只有一档。
+
+**问 2：`Book` 是否带 `source`？**
+要。加 `source_spot: str` / `source_perp: str`（例如 `"hl:io"`、`"safetrade"`），出问题能追到接口。
+
+**问 3：3000ms 时效是否按场所区分？**
+区分。`validate()` 接受 `max_age_ms` 由调用方传；默认值保持 3000，但 SafeTrade 腿的建议值是 8000（页面刷新慢），HL 腿 2000。具体阈值不在本函数硬编码。
+
+**问 4：同名不同币 3 倍阈值改成历史分布？**
+保持 3 倍固定值（本任务不做历史分布），但函数要把触发值返回给调用方，便于以后改判据。历史分布判定放到 `tasks/task-05-symbol-identity.md`，不在本任务范围。
+
+来源：Hyperliquid 官方 tick-and-lot-size 文档、exchange endpoint 报错样例（`Order must have minimum value of $10.`）。
