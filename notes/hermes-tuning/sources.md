@@ -27,3 +27,8 @@
 - hermes-watchdog（零 token 监控插件）
 - 舍赫拉查德之灯《跟 Hermes Agent 协作两个月踩过的 12 个坑》
 - Code and Me《Hermes Agent 新手指南：10 个设定》
+
+## 第三轮补充
+- 官方 guides/cron-script-only（no-agent 模式）
+- 官方 user-guide/configuration（目录结构、config 命令）
+- 官方 bundled skill productivity/product-price-monitor（监控契约三条硬规矩）
