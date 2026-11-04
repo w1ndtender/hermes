@@ -35,3 +35,6 @@
 
 ## 第四轮补充
 - 官方 docs/user-stories（社区真实案例汇总，含 Trading & Markets 分类）
+
+## 第五轮补充
+- GitHub Gabriel-0110/.hermes :: docs/architecture/hermes-trader-architecture.md（多 agent 交易平台架构）
