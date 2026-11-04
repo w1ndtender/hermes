@@ -1,0 +1,32 @@
+{
+  "fingerprint": {
+    "model.default": "deepseek-flash",
+    "soul_sha256": "c750c0f3",
+    "memory_chars": {
+      "MEMORY.md": 840,
+      "USER.md": 1374
+    }
+  },
+  "dry_run": false,
+  "counts": {
+    "passed": 0,
+    "failed": 0,
+    "errored": 1,
+    "timeout": 0,
+    "dry_run": 0
+  },
+  "duration_seconds": 8.162,
+  "results": [
+    {
+      "id": "verdict-before-data",
+      "status": "errored",
+      "output": "哪个策略？这轮没上下文，把链接或内容发我，我看完给「做/不做」。\n",
+      "stderr": "",
+      "criteria": [],
+      "error": "无法按 session id 找到会话轨迹",
+      "session_id": null,
+      "returncode": 0,
+      "duration_seconds": 8.135
+    }
+  ]
+}
