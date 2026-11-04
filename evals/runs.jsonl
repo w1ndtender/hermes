@@ -1,0 +1,4 @@
+{"date": "2026-11-04", "task": "同所价差回测 v1", "result": "fail", "rework": true, "error": "薄盘口假价差 + 当根收盘成交（前视）", "evidence": "Gate GMX 显示 2.6%，原始 K 线该小时现货成交 $248"}
+{"date": "2026-11-04", "task": "跨所价差回测", "result": "fail", "rework": false, "error": "结论为 0 笔（正常证伪）", "evidence": "60 个配对价差 P99 ≤0.02%，成本 0.39%"}
+{"date": "2026-11-04", "task": "问用户余额结论", "result": "fail", "rework": true, "error": "答非所问：用户问调教，我答余额", "evidence": "用户原话「没说不放心余额 见底我自己会充钱」"}
+{"date": "2026-11-04", "task": "规则堆积", "result": "fail", "rework": true, "error": "只加规则不删、且存在互相冲突的两条", "evidence": "「极简3行」vs「读全逐条」；指令堆到 20 条依从率 96%→20%"}
