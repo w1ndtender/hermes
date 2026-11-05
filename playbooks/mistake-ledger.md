@@ -184,3 +184,9 @@
 31. **拿榜单快照当实时资费**（2026-11-02）：对外说「Lighter 0.073%/h、比 HL 高 3.6 倍」，实际是 taoli 榜 02:01 的缓存；实时查 HL 0.0225%/h、Gate 0.0006%/h，Lighter 根本没有 PRL 合约。规则：资费/价差一律现查 API，榜单只用来找候选，不用来下结论。
 32. **BSC 公开索引器全封**（2026-11-02）：BscScan 403、Blockscout 404、Routescan 400、Etherscan v2 免费不给 BSC。可用路径只有 RPC eth_getLogs：blockrazor 限 20 块/次、1rpc 限 50、publicnode 要求带 address；回补 24h 需 2,880 次请求，8 并发会卡死，4 并发加增量落盘才跑完。
 33. **pkill -f 会杀掉自己**（2026-11-02）：命令行里含匹配串时，pkill -f wallet_backfill 把执行它的 shell 一起 SIGTERM，后续 git 提交整段丢失。杀进程要配 pgrep | grep -v bash | awk | xargs kill。
+
+## 停推送只停了 timer，漏了常驻循环
+
+- **症状**：用户说停套利，停了 7 个 timer 后仍收到 PEARL 价差推送。
+- **根因**： 不在任何 timer 里，而是被  的  每 45 秒直接调用。
+- **规矩**：停任何推送/任务前，先  + ，把「谁调用它」列全，再逐个停，最后用 ps 复查。
